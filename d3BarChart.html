@@ -3,6 +3,20 @@
         <meta charset="utf-8">
         <title>D3 Page Bar Chart</title>
         <style> /* set the CSS */
+        .svg-container {
+            display: inline-block;
+            position: relative;
+            width: 100%;
+            padding-bottom: 50%; /* aspect ratio */
+            vertical-align: top;
+            overflow: hidden;
+        }
+        .svg-content-responsive {
+            display: inline-block;
+            position: absolute;
+            top: 10px;
+            left: 0;
+        }
         .bar {
             fill:  steelblue;
         }
@@ -33,9 +47,12 @@ var y = d3.scaleLinear()
 
 //Create SVG element
 var svg = d3.select("body")
+            .append("div")
+            .classed("svg-container", true)
             .append("svg")
-            .attr("width", w + margin.left + margin.right)
-            .attr("height", h + margin.left + margin.right)
+            .attr("preserveAspectRatio", "xMinYMin meet")
+            .attr("viewBox", "0 0 " + w + " " + h)
+            .classed("svg-content-responsive", true)
             .append("g")
             .attr("transform", 
                   "translate(" + margin.left + "," + margin.top + ")");
@@ -82,7 +99,6 @@ d3.csv("individualRisk.csv", function(error, data) {
         .attr("class", "axis")
         .call(d3.axisLeft(y))
 
-          .tickFormat(d3.format("d"));
 
 
 
