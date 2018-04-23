@@ -1,38 +1,57 @@
 <!DOCTYPE html>
-    <head>
-        <meta charset="utf-8">
-        <title>D3 Page Bar Chart</title>
-        <style> /* set the CSS */
-        .svg-container {
-            display: inline-block;
-            position: relative;
-            width: 100%;
-            padding-bottom: 50%; /* aspect ratio */
-            vertical-align: top;
-            overflow: hidden;
-        }
-        .svg-content-responsive {
-            display: inline-block;
-            position: absolute;
-            top: 10px;
-            left: 0;
-        }
-        .bar {
-            fill:  steelblue;
-        }
-        rect:hover {
-            opacity: .5;
-        }    
-        .axis path,
-        .axis line,
-        .axis text {
-          font-family: arial;
+<head>
+<meta charset="utf-8">
+<title>Risk Mitigation</title>
+<style> 
+/* set the CSS */
+body {
+  font-family: arial
+}
+.svg-container {
+  display: inline-block;
+  position: relative;
+  width: 100%;
+  padding-bottom: 50%; /* aspect ratio */
+  vertical-align: top;
+  overflow: hidden;
+}
+.svg-content-responsive {
+  display: inline-block;
+  position: absolute;
+  top: 10px;
+  left: 0;
+}
+.bar {
+  fill:  #629DD3;
+}
+rect:hover {
+  opacity: .5;
+}    
+.axis path,
+.axis line,
+.axis text {
+  font-family: arial;
+  font-size: 8px
 
-        }  
-        </style>
-        <script src="http://d3js.org/d3.v4.min.js"></script>
+}  
+.toolTipClass {
+  position: absolute;
+  display: none;
+  /* height: auto;*/
+  background: none repeat scroll 0 0 #ffffff;
+  border: 1px solid #000;
+  border-radius: 10px;
+  border-color: #a9a9a9;
+  padding: 10px;
+  text-align: left;
+  box-shadow: 2px 2px #a9a9a9 ;
+  pointer-events: none;   
 
-    </head>
+}
+</style>
+<script src="http://d3js.org/d3.v4.min.js"></script>
+
+</head>
 
 <body>
 
@@ -42,97 +61,136 @@
 //Create the canvas
 var margin = { top: 20, right: 20, bottom: 60, left: 40 }
     width = 960
-    height = 500
+    height = 250
     w = width - margin.left - margin.right 
     h = height - margin.top - margin.bottom 
-    ;
+;
 
 //Set the scales
 var xScale = d3.scaleBand() //ordinal scale
-          .range([0, w])
-          .padding(0.2)
+                .range([0, w])
+                .padding(0.1)
     yScale = d3.scaleLinear() //linear scale
-          .range([h, 0])
-          ;
+                .range([h, 0])
+                ;
 
 //Create SVG element
 var svg = d3.select("body")
-            .append("div")
-            .classed("svg-container", true)
-            .append("svg")
-            .attr("preserveAspectRatio", "xMinYMin meet")
-            .attr("viewBox", "0 0 " + width + " " + height)
-            .classed("svg-content-responsive", true)
-            .append("g") 
+            .append("div") //needed for dynamic scaling
+            .classed("svg-container", true) //needed for dynamic scaling
+            .append("svg") //always keep
+            .attr("preserveAspectRatio", "xMinYMin meet")  //needed for dynamic scaling
+            .attr("viewBox", "0 0 " + width + " " + height)  //needed for dynamic scaling - this replaces height and width
+            .classed("svg-content-responsive", true) //needed for dynamic scaling
+            // .attr("width", width) //turn this on to test without dynamic scaling, and remove the dynamic scalaing lines
+            // .attr("height", height) //turn this on to test without dynamic scaling, and remove the dynamic scalaing lines
+            .append("g")  //always keep from here down
             .attr("transform", 
-                  "translate(" + margin.left + "," + margin.top + ")")
+              "translate(" + margin.left + "," + margin.top + ")")
             ;
+
+//add the tooltuip
+var toolTip = d3.select("body")
+                .append("class")
+                .attr("class", "toolTipClass")
+                .style("opacity", 0)
+                ;
 
 //Define the Scales
 var xAxis = d3.axisBottom(xScale)
     yAxis = d3.axisLeft(yScale)
-      .ticks(5)
-      .tickFormat(d3.format(".0f"))
-    ;
+              .ticks(5)
+              .tickFormat(d3.format(".0f")) //only show whole numbers
+              ;
 
 //Get the data
-
 d3.csv("individualRisk.csv", function(error, data) {
-    if (error) throw error; 
-    console.log(data);
+  if (error) throw error; 
+    console.log(data);  //allows checking the data that comes through in the console
   // format the data
-    data.forEach(function(d) {
-      d.count = +d.count;
-    });
+  data.forEach(function(d) {
+    d.count = +d.count;
+  });
 
   // Scale the range of the data in the domains
   xScale.domain(data.map(function(d) { return d.name; }));
   yScale.domain([0, d3.max(data, function(d) { return d.count; })]);
 
-
-  // append the rectangles for the bar chart
-  svg.selectAll(".bar")
-      .data(data)
-    .enter().append("rect")
-      .attr("class", "bar")
-      .attr("x", function(d) { return xScale(d.name); })
-      .attr("width", xScale.bandwidth())
-      .attr("y", function(d) { return yScale(d.count); })
-      .attr("height", function(d) { return h - yScale(d.count); });
-
-
-        // add the x Axis
+  // add the x Axis
   svg.append("g")
       .attr("transform", "translate(0," + h + ")")
       .attr("class", "axis")
       .call(xAxis)
       .selectAll("text")
-      .attr("y", 10)
-      .attr("x", 9)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(-45)")
-      .style("text-anchor", "end")
-
-;
+      .call(wrap, xScale.bandwidth())
+      ;
 
   // add the y Axis
   svg.append("g")
-        .attr("class", "axis")
-        .call(yAxis)
+      .attr("class", "axis")
+      .call(yAxis)
 
+  // append the rectangles for the bar chart
+  svg.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function(d) { return xScale(d.name); })
+      .attr("width", xScale.bandwidth())
+      .attr("y", h )
+      .on("mousemove", function(d){ 
+        toolTip.transition()
+                .duration(100)
+                .style("opacity", .9);
+        toolTip.style("left", d3.event.pageX - 50 + "px")
+                .style("top", d3.event.pageY - 70 + "px")
+                .style("display", "inline-block")
+                .html(d.name + "<br><big> Number of Projects: <strong> "  + d.count + "</strong></big>");
+        })
+      .on("mouseout", function(d){ 
+        toolTip.transition()
+                .duration(200)
+                .style("opacity", 0);
+        })
+      .transition()
+      .duration(1000)
+      .attr("y", function(d) { return yScale(d.count); })
+      .attr("height", function(d) { return h - yScale(d.count); })
 
-
-
-
-
-
+  // add clickthrough functionality
+  svg.selectAll(".bar")
+      .on("click", function(d) {
+        alert (d.name);
+      // location.replace("www.google.ca/" + d.name);
+      });
 })
-function type(d) {
-  d.count = +d.count;
-  return d;
-}
 
+// wrap very long x-axis category information
+function wrap(text, width) {
+  text.each(function() {
+    var text = d3.select(this),
+        words = text.text().split(/\s+/).reverse(),
+        word,
+        line = [],
+        lineNumber = 0,
+        lineHeight = 1.1, // ems
+        y = text.attr("y"),
+        dy = parseFloat(text.attr("dy")),
+        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em")
+        while (word = words.pop()) {
+          line.push(word)
+          tspan.text(line.join(" "))
+          if (tspan.node().getComputedTextLength() > width) {
+            line.pop()
+            tspan.text(line.join(" "))
+            line = [word]
+            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", `${++lineNumber * lineHeight + dy}em`).text(word)
+          }
+        }
+      })
+    }
 
 </script>
 
 </body>
+
